@@ -1,3 +1,4 @@
+<!-- PATH: admin.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -218,9 +219,8 @@ td {
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-  import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+  import { getFirestore, collection, getDocs, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-  // YOUR EXACT FIREBASE CONFIG
   const firebaseConfig = {
     apiKey: "AIzaSyDlDCDAHhqliPcoRyvR6Bp8KVr-tjdikbg",
     authDomain: "unabn-ec3af.firebaseapp.com",
@@ -243,104 +243,99 @@ td {
     if (key === "APEX-9F4K-7B2X-M9Q1") {
       document.getElementById('authBox').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
-      fetchData();
+      
+      // Make admin panel live too
+      onSnapshot(collection(db, "user"), (snapshot) => {
+        renderTable(snapshot);
+      });
+      
     } else {
       document.getElementById('authError').style.display = 'block';
     }
   });
 
-  document.getElementById('refreshBtn').addEventListener('click', fetchData);
+  document.getElementById('refreshBtn').addEventListener('click', async () => {
+    const snap = await getDocs(collection(db, "user"));
+    renderTable(snap);
+  });
 
-  async function fetchData() {
+  function renderTable(querySnapshot) {
     const tbody = document.getElementById('userTableBody');
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">SCANNING FIREBASE...</td></tr>';
+    let users = [];
     
-    try {
-      const querySnapshot = await getDocs(collection(db, "user"));
-      let users = [];
+    querySnapshot.forEach((docSnap) => {
+      users.push({ id: docSnap.id, ...docSnap.data() });
+    });
+
+    const now = Date.now();
+
+    users.forEach(u => {
+      const start = u.timestampMs || now;
+      const target = start + fifteenDaysMs;
+      u.timeRemainingMs = target - now;
+    });
+
+    users.sort((a, b) => a.timeRemainingMs - b.timeRemainingMs);
+
+    tbody.innerHTML = '';
+
+    users.forEach(u => {
+      const tr = document.createElement('tr');
       
-      querySnapshot.forEach((docSnap) => {
-        users.push({ id: docSnap.id, ...docSnap.data() });
+      let timerText = "UNBAN COMPLETE";
+      let timerColor = "#00ffaa";
+      
+      if (u.timeRemainingMs > 0) {
+        const d = Math.floor(u.timeRemainingMs / msPerDay);
+        const h = Math.floor((u.timeRemainingMs % msPerDay) / (1000 * 60 * 60));
+        timerText = `${d} Days, ${h} Hours left`;
+        timerColor = "#f59e0b";
+      } else if (u.timeRemainingMs < 0 && u.timeRemainingMs > -(5 * msPerDay)) {
+        const penaltyMsLeft = (u.timestampMs + fifteenDaysMs + (5*msPerDay)) - now;
+        const d = Math.floor(penaltyMsLeft / msPerDay);
+        timerText = `PENALTY: ${d} Days left`;
+        timerColor = "#ff3838";
+      }
+
+      tr.innerHTML = `
+        <td class="uid-cell">${u.uid}</td>
+        <td>${u.banDate || 'Unknown'}</td>
+        <td class="timer-cell" style="color: ${timerColor};">${timerText}</td>
+        <td class="action-btns">
+          <button class="action-btn reduce" data-id="${u.id}" data-ts="${u.timestampMs}">-1 Day</button>
+          <button class="action-btn increase" data-id="${u.id}" data-ts="${u.timestampMs}">+1 Day</button>
+          <button class="action-btn zero" data-id="${u.id}" data-ts="${u.timestampMs}">Complete Now</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    attachListeners();
+  }
+
+  function attachListeners() {
+    document.querySelectorAll('.reduce').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        const currentTs = parseInt(e.target.getAttribute('data-ts'));
+        await manipulateTimer(id, currentTs - msPerDay); 
       });
+    });
 
-      const now = Date.now();
-
-      // Calculate exact time remaining for sorting
-      users.forEach(u => {
-        const start = u.timestampMs || now;
-        const target = start + fifteenDaysMs;
-        u.timeRemainingMs = target - now;
+    document.querySelectorAll('.increase').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        const currentTs = parseInt(e.target.getAttribute('data-ts'));
+        await manipulateTimer(id, currentTs + msPerDay); 
       });
+    });
 
-      // Sort: Lowest time remaining at the top
-      users.sort((a, b) => a.timeRemainingMs - b.timeRemainingMs);
-
-      tbody.innerHTML = '';
-
-      users.forEach(u => {
-        const tr = document.createElement('tr');
-        
-        // Format time remaining for display
-        let timerText = "UNBAN COMPLETE";
-        let timerColor = "#00ffaa";
-        
-        if (u.timeRemainingMs > 0) {
-          const d = Math.floor(u.timeRemainingMs / msPerDay);
-          const h = Math.floor((u.timeRemainingMs % msPerDay) / (1000 * 60 * 60));
-          timerText = `${d} Days, ${h} Hours left`;
-          timerColor = "#f59e0b";
-        } else if (u.timeRemainingMs < 0 && u.timeRemainingMs > -(5 * msPerDay)) {
-          // Penalty phase formatting
-          const penaltyMsLeft = (u.timestampMs + fifteenDaysMs + (5*msPerDay)) - now;
-          const d = Math.floor(penaltyMsLeft / msPerDay);
-          timerText = `PENALTY: ${d} Days left`;
-          timerColor = "#ff3838";
-        }
-
-        tr.innerHTML = `
-          <td class="uid-cell">${u.uid}</td>
-          <td>${u.banDate || 'Unknown'}</td>
-          <td class="timer-cell" style="color: ${timerColor};">${timerText}</td>
-          <td class="action-btns">
-            <button class="action-btn reduce" data-id="${u.id}" data-ts="${u.timestampMs}">-1 Day</button>
-            <button class="action-btn increase" data-id="${u.id}" data-ts="${u.timestampMs}">+1 Day</button>
-            <button class="action-btn zero" data-id="${u.id}" data-ts="${u.timestampMs}">Complete Now</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
+    document.querySelectorAll('.zero').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-id');
+        await manipulateTimer(id, Date.now() - (16 * msPerDay)); 
       });
-
-      // Attach event listeners to generated buttons
-      document.querySelectorAll('.reduce').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          const id = e.target.getAttribute('data-id');
-          const currentTs = parseInt(e.target.getAttribute('data-ts'));
-          // To reduce remaining time by 1 day, we make the start time 1 day OLDER
-          await manipulateTimer(id, currentTs - msPerDay); 
-        });
-      });
-
-      document.querySelectorAll('.increase').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          const id = e.target.getAttribute('data-id');
-          const currentTs = parseInt(e.target.getAttribute('data-ts'));
-          // To increase remaining time by 1 day, we make the start time 1 day NEWER
-          await manipulateTimer(id, currentTs + msPerDay); 
-        });
-      });
-
-      document.querySelectorAll('.zero').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-          const id = e.target.getAttribute('data-id');
-          // Set start time to 16 days ago, so it instantly passes both normal and penalty phases
-          await manipulateTimer(id, Date.now() - (16 * msPerDay)); 
-        });
-      });
-
-    } catch (err) {
-      console.error(err);
-      tbody.innerHTML = `<tr><td colspan="4" style="color:#ff3838;">ERROR READING DATABASE: ${err.message}</td></tr>`;
-    }
+    });
   }
 
   async function manipulateTimer(docId, newTimestampMs) {
@@ -348,12 +343,10 @@ td {
       await updateDoc(doc(db, "user", docId), {
         timestampMs: newTimestampMs
       });
-      fetchData(); // Reload table after update
     } catch (err) {
       alert("Database error: " + err.message);
     }
   }
 </script>
-
 </body>
 </html>
