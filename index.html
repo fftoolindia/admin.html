@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX AI — ROOT DASHBOARD</title>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  min-height: 100vh;
+  font-family: 'Consolas', monospace;
+  color: #a7f3d0;
+  background-color: #030a0e;
+  padding: 20px;
+}
+
+#grid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: #02080d;
+  background-image:
+    linear-gradient(to right, rgba(255, 56, 56, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 56, 56, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.auth-container {
+  max-width: 400px;
+  margin: 100px auto;
+  background: rgba(4, 18, 25, 0.88);
+  border: 1px solid rgba(255, 56, 56, 0.4);
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 0 25px rgba(255, 56, 56, 0.15);
+}
+
+.auth-container h1 {
+  color: #ff3838;
+  font-size: 20px;
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px rgba(255, 56, 56, 0.5);
+}
+
+input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 56, 56, 0.3);
+  background: rgba(2, 10, 16, 0.85);
+  color: #ffb8b8;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+input:focus {
+  border-color: #ff3838;
+  box-shadow: 0 0 12px rgba(255, 56, 56, 0.35);
+}
+
+.cyber-btn {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ff3838;
+  border-radius: 6px;
+  background: rgba(255, 56, 56, 0.1);
+  color: #ff3838;
+  font-weight: 800;
+  cursor: pointer;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.cyber-btn:hover {
+  background: #ff3838;
+  color: #000;
+  box-shadow: 0 0 20px rgba(255, 56, 56, 0.5);
+}
+
+#dashboard {
+  display: none;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 56, 56, 0.3);
+  padding-bottom: 15px;
+}
+
+.dash-header h1 {
+  color: #ff3838;
+  font-size: 22px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(255, 56, 56, 0.5);
+}
+
+.table-wrapper {
+  background: rgba(4, 18, 25, 0.88);
+  border: 1px solid rgba(255, 56, 56, 0.3);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+th, td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 56, 56, 0.15);
+}
+
+th {
+  background: rgba(255, 56, 56, 0.1);
+  color: #ffb8b8;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+td {
+  color: #00e5ff;
+}
+
+.uid-cell {
+  font-weight: bold;
+  color: #00ffaa;
+  font-size: 14px;
+}
+
+.timer-cell {
+  color: #f59e0b;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.action-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 6px 10px;
+  border: 1px solid #436170;
+  background: rgba(67, 97, 112, 0.2);
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.action-btn.reduce { border-color: #00ffaa; color: #00ffaa; }
+.action-btn.reduce:hover { background: #00ffaa; color: #000; box-shadow: 0 0 10px #00ffaa; }
+
+.action-btn.increase { border-color: #ff3838; color: #ff3838; }
+.action-btn.increase:hover { background: #ff3838; color: #000; box-shadow: 0 0 10px #ff3838; }
+
+.action-btn.zero { border-color: #00e5ff; color: #00e5ff; }
+.action-btn.zero:hover { background: #00e5ff; color: #000; box-shadow: 0 0 10px #00e5ff; }
+
+</style>
+</head>
+<body>
+
+<div id="grid-bg"></div>
+
+<!-- LOGIN SCREEN -->
+<div class="auth-container" id="authBox">
+  <h1>ROOT OVERRIDE</h1>
+  <input type="password" id="adminKey" placeholder="ENTER AUTH KEY">
+  <button class="cyber-btn" id="loginBtn">ACCESS DATABASE</button>
+  <div id="authError" style="color:#ff3838; font-size:11px; margin-top:10px; display:none;">ACCESS DENIED. INVALID KEY.</div>
+</div>
+
+<!-- DASHBOARD SCREEN -->
+<div id="dashboard">
+  <div class="dash-header">
+    <h1>APEX AI // DATABASE CONTROL</h1>
+    <button class="cyber-btn" style="width: auto; padding: 8px 15px;" id="refreshBtn">REFRESH DATA</button>
+  </div>
+  
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>UID</th>
+          <th>BAN DATE</th>
+          <th>TIME REMAINING</th>
+          <th>MANIPULATE TIMER</th>
+        </tr>
+      </thead>
+      <tbody id="userTableBody">
+        <!-- Rows populate here -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+  // YOUR EXACT FIREBASE CONFIG
+  const firebaseConfig = {
+    apiKey: "AIzaSyDlDCDAHhqliPcoRyvR6Bp8KVr-tjdikbg",
+    authDomain: "unabn-ec3af.firebaseapp.com",
+    projectId: "unabn-ec3af",
+    storageBucket: "unabn-ec3af.firebasestorage.app",
+    messagingSenderId: "695273766185",
+    appId: "1:695273766185:web:a6c9e2dec8247de1020b38",
+    measurementId: "G-HYCC2B6SCD"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const fifteenDaysMs = 15 * msPerDay;
+
+  // Login Logic
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    const key = document.getElementById('adminKey').value;
+    if (key === "APEX-9F4K-7B2X-M9Q1") {
+      document.getElementById('authBox').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      fetchData();
+    } else {
+      document.getElementById('authError').style.display = 'block';
+    }
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', fetchData);
+
+  async function fetchData() {
+    const tbody = document.getElementById('userTableBody');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">SCANNING FIREBASE...</td></tr>';
+    
+    try {
+      const querySnapshot = await getDocs(collection(db, "user"));
+      let users = [];
+      
+      querySnapshot.forEach((docSnap) => {
+        users.push({ id: docSnap.id, ...docSnap.data() });
+      });
+
+      const now = Date.now();
+
+      // Calculate exact time remaining for sorting
+      users.forEach(u => {
+        const start = u.timestampMs || now;
+        const target = start + fifteenDaysMs;
+        u.timeRemainingMs = target - now;
+      });
+
+      // Sort: Lowest time remaining at the top
+      users.sort((a, b) => a.timeRemainingMs - b.timeRemainingMs);
+
+      tbody.innerHTML = '';
+
+      users.forEach(u => {
+        const tr = document.createElement('tr');
+        
+        // Format time remaining for display
+        let timerText = "UNBAN COMPLETE";
+        let timerColor = "#00ffaa";
+        
+        if (u.timeRemainingMs > 0) {
+          const d = Math.floor(u.timeRemainingMs / msPerDay);
+          const h = Math.floor((u.timeRemainingMs % msPerDay) / (1000 * 60 * 60));
+          timerText = `${d} Days, ${h} Hours left`;
+          timerColor = "#f59e0b";
+        } else if (u.timeRemainingMs < 0 && u.timeRemainingMs > -(5 * msPerDay)) {
+          // Penalty phase formatting
+          const penaltyMsLeft = (u.timestampMs + fifteenDaysMs + (5*msPerDay)) - now;
+          const d = Math.floor(penaltyMsLeft / msPerDay);
+          timerText = `PENALTY: ${d} Days left`;
+          timerColor = "#ff3838";
+        }
+
+        tr.innerHTML = `
+          <td class="uid-cell">${u.uid}</td>
+          <td>${u.banDate || 'Unknown'}</td>
+          <td class="timer-cell" style="color: ${timerColor};">${timerText}</td>
+          <td class="action-btns">
+            <button class="action-btn reduce" data-id="${u.id}" data-ts="${u.timestampMs}">-1 Day</button>
+            <button class="action-btn increase" data-id="${u.id}" data-ts="${u.timestampMs}">+1 Day</button>
+            <button class="action-btn zero" data-id="${u.id}" data-ts="${u.timestampMs}">Complete Now</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Attach event listeners to generated buttons
+      document.querySelectorAll('.reduce').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.getAttribute('data-id');
+          const currentTs = parseInt(e.target.getAttribute('data-ts'));
+          // To reduce remaining time by 1 day, we make the start time 1 day OLDER
+          await manipulateTimer(id, currentTs - msPerDay); 
+        });
+      });
+
+      document.querySelectorAll('.increase').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.getAttribute('data-id');
+          const currentTs = parseInt(e.target.getAttribute('data-ts'));
+          // To increase remaining time by 1 day, we make the start time 1 day NEWER
+          await manipulateTimer(id, currentTs + msPerDay); 
+        });
+      });
+
+      document.querySelectorAll('.zero').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.getAttribute('data-id');
+          // Set start time to 16 days ago, so it instantly passes both normal and penalty phases
+          await manipulateTimer(id, Date.now() - (16 * msPerDay)); 
+        });
+      });
+
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = `<tr><td colspan="4" style="color:#ff3838;">ERROR READING DATABASE: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function manipulateTimer(docId, newTimestampMs) {
+    try {
+      await updateDoc(doc(db, "user", docId), {
+        timestampMs: newTimestampMs
+      });
+      fetchData(); // Reload table after update
+    } catch (err) {
+      alert("Database error: " + err.message);
+    }
+  }
+</script>
+
+</body>
+</html>
